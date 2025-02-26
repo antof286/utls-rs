@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 rustls = { path = "crates/rustls/rustls", features = ["std", "ring"], default-features = false }
-tokio = { version = "1.43", features = ["net", "io-util", "macros", "rt"], default-features = false }
+tokio = { version = "1.43", features = ["net", "io-util", "macros", "rt", "time"], default-features = false }
 webpki-roots = "0.26"
 rand = "0.9"
 
