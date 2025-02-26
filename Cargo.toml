@@ -1,0 +1,13 @@
+[package]
+name = "utls-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rustls = { path = "crates/rustls/rustls", features = ["std", "ring"], default-features = false }
+tokio = { version = "1.43", features = ["net", "io-util", "macros", "rt"], default-features = false }
+webpki-roots = "0.26"
+rand = "0.9"
+
+[dev-dependencies]
+tokio = { version = "1.43", features = ["net", "io-util", "macros", "rt", "sync", "time"], default-features = false }

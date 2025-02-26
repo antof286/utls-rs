@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# This script fetches, builds, and runs the BoringSSL
+# TLS test tool ('BoGo') against rustls.
+
+set -xe
+
+case ${BOGO_SHIM_PROVIDER:-aws-lc-rs} in
+  ring)
+      cpp -P -DRING config.json.in > config.json
+      cargo run -- -print-rustls-provider
+      ;;
+  aws-lc-rs)
+      cpp -P -DAWS_LC_RS config.json.in > config.json
+      cargo run -- -print-rustls-provider
+      ;;
+  aws-lc-rs-fips)
+      cpp -P -DAWS_LC_RS -DFIPS config.json.in > config.json
+      cargo run --features fips -- -print-rustls-provider
+      ;;
+  post-quantum)
+      cpp -P -DAWS_LC_RS -DPOST_QUANTUM config.json.in > config.json
+      cargo run --features post-quantum -- -print-rustls-provider
+      ;;
+  existing)
+      ;;
+  *)
+      echo "unsupported BOGO_SHIM_PROVIDER: supported are (ring|aws-lc-rs|aws-lc-rs-fips|post-quantum|existing)"
+      exit 1
+      ;;
+esac
+
+if [ ! -e bogo/ssl/test/runner/runner.test ] ; then
+  ./fetch-and-build
+  cp -v keys/* bogo/
+fi
+
+# Best effort on OS-X
+case $OSTYPE in darwin*) set +e ;; esac
+
+( cd bogo/ssl/test/runner && ./runner.test -shim-path ../../../../../target/debug/bogo \
+     -shim-config ../../../../config.json \
+     -pipe \
+     -allow-unimplemented \
+     -test.timeout 60s \
+     "$@") # you can pass in `-test "Foo;Bar"` to run specific tests
+true

@@ -1,0 +1,15 @@
+[package]
+name = "bogo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = { workspace = true }
+env_logger = { workspace = true }
+rustls = { path = "../rustls", features = ["aws_lc_rs", "ring", "tls12"] }
+rustls-post-quantum = { path = "../rustls-post-quantum", optional = true }
+
+[features]
+default = []
+post-quantum = ["dep:rustls-post-quantum"]
+fips = ["rustls/fips"]

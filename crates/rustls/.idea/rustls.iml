@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/bogo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ci-bench/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/connect-tests/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/openssl-tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/provider-example/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/provider-example/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-bench/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-fuzzing-provider/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-fuzzing-provider/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-post-quantum/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-post-quantum/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-post-quantum/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls-provider-test/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rustls/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
