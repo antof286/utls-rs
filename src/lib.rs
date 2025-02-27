@@ -37,7 +37,7 @@ async fn read_tls_packet<T: AsyncRead + Unpin>(stream: &mut T) -> io::Result<Vec
 }
 
 #[cfg(not(doctest))]
-/// Sends some data over a [`TcpStream`] the way that DPI detect it as a usual HTTPS connection
+/// Sends some data over a [`TcpStream`] in a way such that DPI detects it as a usual HTTPS connection
 /// to a website (client side)
 ///
 /// **`stream` must be connected to a server doing [`tls_handshake_as_server`]**
@@ -52,8 +52,8 @@ async fn read_tls_packet<T: AsyncRead + Unpin>(stream: &mut T) -> io::Result<Vec
 ///
 /// async {
 ///     let mut stream = TcpStream::connect("not-an-example.com:443").await.unwrap();
-///     // Must be a random number. Must be the same on client and server. DO NOT REUSE THE NUMBER
-///     // GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN SOURCE CODE
+///     // Must be a random number. Must be the same on the client side and the server side.
+///     // DO NOT REUSE THE NUMBER GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN THE SOURCE CODE
 ///     let tls_random_marker = 0xDEADBEEF;
 ///     // Same rules as tls_random_marker
 ///     // DO NOT USE THE SAME tls_random_marker and tls_server_data_marker
@@ -61,7 +61,7 @@ async fn read_tls_packet<T: AsyncRead + Unpin>(stream: &mut T) -> io::Result<Vec
 ///     tls_handshake_as_client(&mut stream, b"example.com", tls_random_marker, tls_server_data_marker).await.unwrap();
 ///
 ///     // Now you can send data over the stream and DPI will think this is a TLS connection to "example.com"
-///     // But to be sure you must send data that looks like TLS stream over the connection
+///     // But to be sure you must send data that looks like a TLS stream over the connection
 /// }
 /// ```
 pub async fn tls_handshake_as_client(
@@ -135,11 +135,11 @@ pub async fn tls_handshake_as_client(
 }
 
 #[cfg(not(doctest))]
-/// Sends some data over a [`TcpStream`] the way that DPI detect it as a usual HTTPS connection
+/// Sends some data over a [`TcpStream`] in a way such that DPI detects it as a usual HTTPS connection
 /// to a website (server side)
 ///
-/// This function will consume [`TcpStream`] in case accepted client is not an utls client and start
-/// [`tokio::io::copy`] task in background between the accepted client and `camouflage_server`
+/// This function consumes [`TcpStream`] in case that an accepted client is not a utls client and starts
+/// a [`tokio::io::copy`] task in the background between the accepted client and `camouflage_server`
 ///
 /// **To protect against replay attacks, you must negotiate tls_random_marker before calling this method
 /// and never reuse it again**
@@ -152,15 +152,16 @@ pub async fn tls_handshake_as_client(
 /// async {
 ///     let listener = TcpListener::bind("0.0.0.0:443").await.unwrap();
 ///     let stream = listener.accept().await.unwrap().0;
-///     // Must be a random number. Must be the same on client and server. DO NOT REUSE THE NUMBER
-///     // GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN SOURCE CODE
+///     // Must be a random number. Must be the same on the client side and the server side.
+///     // DO NOT REUSE THE NUMBER GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN THE SOURCE CODE
 ///     let tls_random_marker = 0xDEADBEEF;
 ///     // Same rules as tls_random_marker
 ///     // DO NOT USE THE SAME tls_random_marker and tls_server_data_marker
 ///     let tls_server_data_marker = 0xCAFEBABE;
 ///     tls_handshake_as_server(stream, ("example.com", 443), tls_random_marker, tls_server_data_marker).await.unwrap();
 ///
-///     // Now you can send data over the stream and DPI will think this is a TLS connection to "example.com"
+///     // Now you can send data over the stream and DPI on the client side
+///     // will think this is a TLS connection to "example.com"
 ///     // But to be sure you must send data that looks like TLS stream over the connection
 /// }
 /// ```
