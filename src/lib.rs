@@ -218,7 +218,6 @@ pub async fn tls_handshake_as_server<A: ToSocketAddrs + Send + 'static>(
         };
         tokio::pin!(f);
         loop {
-
             tokio::select! {
                 e = tokio::io::copy(&mut camouflage_rx, &mut stream_tx) => {
                     e?;
