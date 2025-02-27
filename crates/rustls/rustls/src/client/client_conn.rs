@@ -692,6 +692,10 @@ mod connection {
             })
         }
 
+        /// Make a new ClientConnection. `config` controls how
+        /// we behave in the TLS protocol, `name` is the
+        /// name of the server we want to talk to.
+        /// `random` is TLS random used in Client Hello
         pub fn new_with_override(
             config: Arc<ClientConfig>,
             name: ServerName<'static>,

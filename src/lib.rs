@@ -22,8 +22,6 @@ static RUSTLS_CLIENT_CONFIG: LazyLock<Arc<rustls::ClientConfig>> =
     });
 
 const TLS_RANDOM_MARKER_OFFSET: usize = 4;
-const TLS_RANDOM_MARKER: u32 = 0xA7858E15;
-const TLS_SERVER_DATA_MARKER: u32 = 0x82954178;
 
 async fn read_tls_packet<T: AsyncRead + Unpin>(stream: &mut T) -> io::Result<Vec<u8>> {
     let t = stream.read_u8().await?;
@@ -38,15 +36,45 @@ async fn read_tls_packet<T: AsyncRead + Unpin>(stream: &mut T) -> io::Result<Vec
     Ok(data)
 }
 
+#[cfg(not(doctest))]
+/// Sends some data over a [`TcpStream`] the way that DPI detect it as a usual HTTPS connection
+/// to a website (client side)
+///
+/// **`stream` must be connected to a server doing [`tls_handshake_as_server`]**
+///
+/// **To protect against replay attacks, you must negotiate tls_random_marker before calling this method
+/// and never reuse it again**
+///
+/// Example usage:
+/// ```
+/// use tokio::net::TcpStream;
+/// use utls_rs::tls_handshake_as_client;
+///
+/// async {
+///     let mut stream = TcpStream::connect("not-an-example.com:443").await.unwrap();
+///     // Must be a random number. Must be the same on client and server. DO NOT REUSE THE NUMBER
+///     // GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN SOURCE CODE
+///     let tls_random_marker = 0xDEADBEEF;
+///     // Same rules as tls_random_marker
+///     // DO NOT USE THE SAME tls_random_marker and tls_server_data_marker
+///     let tls_server_data_marker = 0xCAFEBABE;
+///     tls_handshake_as_client(&mut stream, b"example.com", tls_random_marker, tls_server_data_marker).await.unwrap();
+///
+///     // Now you can send data over the stream and DPI will think this is a TLS connection to "example.com"
+///     // But to be sure you must send data that looks like TLS stream over the connection
+/// }
+/// ```
 pub async fn tls_handshake_as_client(
     stream: &mut TcpStream,
-    sni_hostname: &[u8]
+    sni_hostname: &[u8],
+    tls_random_marker: u32,
+    tls_server_data_marker: u32
 ) -> io::Result<()> {
     let mut tls_random = [0u8; 32];
     rand::rng().fill(&mut tls_random);
 
     tls_random[TLS_RANDOM_MARKER_OFFSET..TLS_RANDOM_MARKER_OFFSET + 4]
-        .copy_from_slice(&TLS_RANDOM_MARKER.to_be_bytes());
+        .copy_from_slice(&tls_random_marker.to_be_bytes());
 
     let hostname = ServerName::try_from(sni_hostname)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?
@@ -97,7 +125,7 @@ pub async fn tls_handshake_as_client(
         let packet = read_tls_packet(stream).await?;
         if packet.len() >= 5 + 4 && packet[0] == 0x17 {
             let marker = u32::from_be_bytes(packet[5..5 + 4].try_into().unwrap());
-            if marker == TLS_SERVER_DATA_MARKER {
+            if marker == tls_server_data_marker {
                 break;
             }
         }
@@ -106,9 +134,41 @@ pub async fn tls_handshake_as_client(
     Ok(())
 }
 
+#[cfg(not(doctest))]
+/// Sends some data over a [`TcpStream`] the way that DPI detect it as a usual HTTPS connection
+/// to a website (server side)
+///
+/// This function will consume [`TcpStream`] in case accepted client is not an utls client and start
+/// [`tokio::io::copy`] task in background between the accepted client and `camouflage_server`
+///
+/// **To protect against replay attacks, you must negotiate tls_random_marker before calling this method
+/// and never reuse it again**
+///
+/// Example usage:
+/// ```
+/// use tokio::net::{TcpListener, TcpStream};
+/// use utls_rs::{tls_handshake_as_client, tls_handshake_as_server};
+///
+/// async {
+///     let listener = TcpListener::bind("0.0.0.0:443").await.unwrap();
+///     let stream = listener.accept().await.unwrap().0;
+///     // Must be a random number. Must be the same on client and server. DO NOT REUSE THE NUMBER
+///     // GIVEN HERE, GENERATE ONE SOMEWHERE AND PUT IT IN SOURCE CODE
+///     let tls_random_marker = 0xDEADBEEF;
+///     // Same rules as tls_random_marker
+///     // DO NOT USE THE SAME tls_random_marker and tls_server_data_marker
+///     let tls_server_data_marker = 0xCAFEBABE;
+///     tls_handshake_as_server(stream, ("example.com", 443), tls_random_marker, tls_server_data_marker).await.unwrap();
+///
+///     // Now you can send data over the stream and DPI will think this is a TLS connection to "example.com"
+///     // But to be sure you must send data that looks like TLS stream over the connection
+/// }
+/// ```
 pub async fn tls_handshake_as_server<A: ToSocketAddrs + Send + 'static>(
     mut stream: TcpStream,
-    camouflage_server: A
+    camouflage_server: A,
+    tls_random_marker: u32,
+    tls_server_data_marker: u32
 ) -> io::Result<TcpStream> {
     const CAMOUFLAGE_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
     const CAMOUFLAGE_FORWARD_TIMEOUT: Duration = Duration::from_secs(30);
@@ -131,7 +191,7 @@ pub async fn tls_handshake_as_server<A: ToSocketAddrs + Send + 'static>(
             .try_into()
             .unwrap()
     );
-    if marker != TLS_RANDOM_MARKER {
+    if marker != tls_random_marker {
         tokio::task::spawn(timeout(CAMOUFLAGE_FORWARD_TIMEOUT, async move {
             let mut camouflage_server_connection = camouflage_server_connection.await.unwrap()?;
             camouflage_server_connection.write_all(&client_hello).await?;
@@ -158,6 +218,7 @@ pub async fn tls_handshake_as_server<A: ToSocketAddrs + Send + 'static>(
         };
         tokio::pin!(f);
         loop {
+
             tokio::select! {
                 e = tokio::io::copy(&mut camouflage_rx, &mut stream_tx) => {
                     e?;
@@ -180,7 +241,7 @@ pub async fn tls_handshake_as_server<A: ToSocketAddrs + Send + 'static>(
         &((random_padding_len + 4) as u16)
             .to_be_bytes()
     );
-    tls_packet.extend_from_slice(&TLS_SERVER_DATA_MARKER.to_be_bytes());
+    tls_packet.extend_from_slice(&tls_server_data_marker.to_be_bytes());
     tls_packet.extend((0..random_padding_len).map(|_| rand::rng().random::<u8>()));
     stream_tx.write_all(&tls_packet).await?;
 
@@ -202,7 +263,9 @@ mod tests {
             let c = l.accept().await.unwrap().0;
             let mut c = tls_handshake_as_server(
                 c,
-                "cloudflare.com:443"
+                "cloudflare.com:443",
+                123,
+                123
             ).await.unwrap();
             let mut data = String::new();
             c.read_to_string(&mut data).await.unwrap();
@@ -210,7 +273,7 @@ mod tests {
         });
         ready_rx.await.unwrap();
         let mut c = TcpStream::connect("127.0.0.1:12345").await.unwrap();
-        tls_handshake_as_client(&mut c, "cloudflare.com".as_bytes()).await.unwrap();
+        tls_handshake_as_client(&mut c, "cloudflare.com".as_bytes(), 123, 123).await.unwrap();
         c.write_all("Hello world!".as_bytes()).await.unwrap();
         drop(c);
         t.await.unwrap();
@@ -224,7 +287,9 @@ mod tests {
             let c = l.accept().await.unwrap().0;
             let res = tls_handshake_as_server(
                 c,
-                "google.com:443"
+                "google.com:443",
+                123,
+                123
             ).await;
             assert!(matches!(res, Err(_)));
         });
