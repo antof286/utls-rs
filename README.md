@@ -20,3 +20,5 @@ async fn tls_handshake_as_server<A>(
              Send +
              'static
 ```
+
+Client Hello has TLS fingerprint of [rustls](https://docs.rs/rustls/latest/rustls/) library
